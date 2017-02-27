@@ -96,7 +96,6 @@ function pushMiCarsInvoice(feeSeq)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars create Invoice Web Service");
 		return r.getOutput();
 	}
 	else

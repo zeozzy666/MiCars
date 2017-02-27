@@ -95,12 +95,11 @@ function createMiCarsContact(peopleModel, addressModel, accountId)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars createCustomer Web Service");
 		return r.getOutput();
 	}
 	else
 	{
 		logDebug("FAILED to call MiCars createCustomer web service " + r.getErrorMessage())
-		return null;
+		return false;
 	}
 }

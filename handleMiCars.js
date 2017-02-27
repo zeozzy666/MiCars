@@ -2,6 +2,7 @@ function handleMiCars(feeSeq)
 {
 	//Variables
 	var mInvoice = null;
+	var result = null;
 
 	//Get Invoice for feeSeq
 	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat());
@@ -31,19 +32,30 @@ function handleMiCars(feeSeq)
 		var bizContact = getContactByType("Business", capId);
 		//createa micars contact
 		var miCarsCont = createMiCarsContact(bizContact, addresses[0], capId.getCustomID());
+		if (miCarsCont)
+		{
+			logDebug("SUCCESS! in calling MiCars createCustomer Web Service " + miCarsCont);
+		}
 	}
-	createMiCarsRef(feeSeq, inv[0]);
+	result = createMiCarsRef(feeSeq, inv[0]);
+	if (result)
+	{
+		logDebug("SUCCESS! in calling MiCars update reference Web Service " + result);
+	}
 	mInvoice = pushMiCarsInvoice(feeSeq);
 
 	//Update reference table with MiCars invoice number
 	if (mInvoice)
 	{
+		logDebug("SUCCESS! in calling MiCars create Invoice Web Service " + mInvoice);
+
+
 		var mInvoiceObject = JSON.parse(mInvoice);
 		var mInvoiceNumber = mInvoiceObject.invoiceNumber;
 		var updateResult = updateMiCarsReference(feeSeq, capId.getCustomID(), invNum, mInvoiceNumber);
 		if  (updateResult)
 		{
-			logDebug("Successfully updated MiCars reference with MiCars Invoice number " + mInvoiceNumber);
+			logDebug("Successfully updated MiCars reference " + updateResult);
 		}
 	}
 

@@ -5,7 +5,7 @@ paymentPeriodList = new Array();
 publicUser = false;
 contactArray = getContactArray();
 //pushAutoAssessedFees2MiCars();
-feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
+//feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
 //inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeseq, aa.util.newQueryFormat()).getOutput()
 //printMethods(inv[0]);
 		//Get primary contact
@@ -23,14 +23,14 @@ feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
 //r = getCapAddresses()
 //printMethodsWithValues(r[0]);
 //handleMiCars(123);
-/*
+
 var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
 for (var x in fees)
 {
-	r = pushMiCarsInvoice(fees[x].getF4FeeItem().getFeeSeqNbr());
-	aa.print(r)
+	//r = pushMiCarsInvoice(fees[x].getF4FeeItem().getFeeSeqNbr());
+	handleMiCars(fees[x].getF4FeeItem().getFeeSeqNbr());
 }
-*/
+
 /////////////////////////////////////////////////////////////////////MICARS FUNCTIONS////////////////////////////////////////////////////////////////
 function addFee(fcode, fsched, fperiod, fqty, finvoice) // Adds a single fee, optional argument: fCap
 {
@@ -89,6 +89,7 @@ function handleMiCars(feeSeq)
 {
 	//Variables
 	var mInvoice = null;
+	var result = null;
 
 	//Get Invoice for feeSeq
 	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat());
@@ -118,19 +119,30 @@ function handleMiCars(feeSeq)
 		var bizContact = getContactByType("Business", capId);
 		//createa micars contact
 		var miCarsCont = createMiCarsContact(bizContact, addresses[0], capId.getCustomID());
+		if (miCarsCont)
+		{
+			logDebug("SUCCESS! in calling MiCars createCustomer Web Service " + miCarsCont);
+		}
 	}
-	createMiCarsRef(feeSeq, inv[0]);
+	result = createMiCarsRef(feeSeq, inv[0]);
+	if (result)
+	{
+		logDebug("SUCCESS! in calling MiCars update reference Web Service " + result);
+	}
 	mInvoice = pushMiCarsInvoice(feeSeq);
 
 	//Update reference table with MiCars invoice number
 	if (mInvoice)
 	{
+		logDebug("SUCCESS! in calling MiCars create Invoice Web Service " + mInvoice);
+
+
 		var mInvoiceObject = JSON.parse(mInvoice);
 		var mInvoiceNumber = mInvoiceObject.invoiceNumber;
 		var updateResult = updateMiCarsReference(feeSeq, capId.getCustomID(), invNum, mInvoiceNumber);
 		if  (updateResult)
 		{
-			logDebug("Successfully updated MiCars reference with MiCars Invoice number " + mInvoiceNumber);
+			logDebug("Successfully updated MiCars reference " + updateResult);
 		}
 	}
 
@@ -187,7 +199,6 @@ function updateMiCarsReference(feeSeq, altId, invNum, mInvoiceNumber)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars update reference Web Service");
 		return r.getOutput();
 	}
 	else
@@ -468,7 +479,6 @@ function pushMiCarsInvoice(feeSeq)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars create Invoice Web Service");
 		return r.getOutput();
 	}
 	else
@@ -625,13 +635,12 @@ function createMiCarsContact(peopleModel, addressModel, accountId)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars createCustomer Web Service");
 		return r.getOutput();
 	}
 	else
 	{
 		logDebug("FAILED to call MiCars createCustomer web service " + r.getErrorMessage())
-		return null;
+		return false;
 	}
 }
 function newGuid() 

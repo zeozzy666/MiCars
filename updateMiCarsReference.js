@@ -48,7 +48,6 @@ function updateMiCarsReference(feeSeq, altId, invNum, mInvoiceNumber)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars update reference Web Service");
 		return r.getOutput();
 	}
 	else
