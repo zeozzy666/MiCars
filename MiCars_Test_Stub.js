@@ -5,8 +5,9 @@ paymentPeriodList = new Array();
 publicUser = false;
 contactArray = getContactArray();
 //pushAutoAssessedFees2MiCars();
-//feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
-//inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeseq, aa.util.newQueryFormat()).getOutput()
+feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
+//inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat()).getOutput();
+//updateMiCarsReference(feeSeq, capId.getCustomID(), inv[0].getInvoiceNbr();, "123");
 //printMethods(inv[0]);
 		//Get primary contact
 //createa micars contact
@@ -24,13 +25,13 @@ contactArray = getContactArray();
 //printMethodsWithValues(r[0]);
 //handleMiCars(123);
 
-var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
+/*var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
 for (var x in fees)
 {
 	//r = pushMiCarsInvoice(fees[x].getF4FeeItem().getFeeSeqNbr());
 	handleMiCars(fees[x].getF4FeeItem().getFeeSeqNbr());
 }
-
+*/
 /////////////////////////////////////////////////////////////////////MICARS FUNCTIONS////////////////////////////////////////////////////////////////
 function addFee(fcode, fsched, fperiod, fqty, finvoice) // Adds a single fee, optional argument: fCap
 {
@@ -195,7 +196,7 @@ function updateMiCarsReference(feeSeq, altId, invNum, mInvoiceNumber)
 	restHeaders.put("Method", "PUT");
 	restHeaders.put("Authorization", "amx " + auth);
 
-
+	aa.print("Update MiCars Reference request body is " + requestBody);
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
