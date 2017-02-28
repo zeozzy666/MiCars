@@ -1,3 +1,6 @@
+/*
+* NOTE: Pass null for parameter 'invScriptObject' to send the Renewal scenario to MiCars (Current Year for Invoice Number, $0 for Invoice Amount)
+*/
 function createMiCarsRef(feeSeq, invScriptObject)
 {
 	if (arguments.length == 3)
@@ -15,7 +18,7 @@ function createMiCarsRef(feeSeq, invScriptObject)
 		}
 		var iCap = iCapResult.getOutput();
 	}
-	
+
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
 	{
@@ -25,7 +28,7 @@ function createMiCarsRef(feeSeq, invScriptObject)
 	//Start putting together request
 	var settingsSC = "MICARS_SETTINGS";
 	var key = lookup(settingsSC, "KEY");
-	var sharedSecret = lookup(settingsSC, "SECRET"); 
+	var sharedSecret = lookup(settingsSC, "SECRET");
 	var baseURL = lookup(settingsSC, "BASE_URL");
 	var uri = baseURL + "accela/reference"
 
@@ -38,10 +41,10 @@ function createMiCarsRef(feeSeq, invScriptObject)
 
 	//Create JSON request body
 	var pushInvJSON = new Object();
-	pushInvJSON.ReferenceId = itemCap.getCustomID() + "";
-	pushInvJSON.InvoiceNumber = invScriptObject.getInvoiceNbr() + "";
+	pushInvJSON.ReferenceId = (invScriptObject == null) ? itemCap.getCustomID() + "--R" : itemCap.getCustomID() + "";
+	pushInvJSON.InvoiceNumber = (invScriptObject == null) ? ""+sysDate.getYear() : invScriptObject.getInvoiceNbr() + "";
 	pushInvJSON.CustomerName = iCap.getSpecialText() + "";
-	pushInvJSON.InvoiceAmount = invScriptObject.getFee() + "";
+	pushInvJSON.InvoiceAmount = (invScriptObject == null) ? "0" : invScriptObject.getFee() + "";
 	requestBody = JSON.stringify(pushInvJSON);
 
 	var b64BodyContent = "";
