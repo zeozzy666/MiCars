@@ -40,13 +40,19 @@ function handleMiCars(feeSeq)
 	}
 	mInvoice = pushMiCarsInvoice(feeSeq);
 
-	//Get MiCars Invoice Number
+	var mInvoiceNumber = null
+	//Update reference table with MiCars invoice number
 	if (mInvoice)
 	{
 		logDebug("SUCCESS! in calling MiCars create Invoice Web Service " + mInvoice);
 
 		var mInvoiceObject = JSON.parse(mInvoice);
 		mInvoiceNumber = mInvoiceObject.invoiceNumber;
+		/*var updateResult = updateMiCarsReference(feeSeq, capId.getCustomID(), invNum, mInvoiceNumber);
+		if  (updateResult)
+		{
+			logDebug("Successfully updated MiCars reference " + updateResult);
+		}*/
 	}
 
 	//Create MiCars Reference Data
