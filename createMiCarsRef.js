@@ -1,7 +1,7 @@
 /*
 * NOTE: Pass null for parameter 'invScriptObject' to send the Renewal scenario to MiCars (Current Year for Invoice Number, $0 for Invoice Amount)
 */
-function createMiCarsRef(feeSeq, invScriptObject)
+function createMiCarsRef(mInvoiceNum, invScriptObject)
 {
 	if (arguments.length == 3)
 	{
@@ -45,6 +45,7 @@ function createMiCarsRef(feeSeq, invScriptObject)
 	pushInvJSON.InvoiceNumber = (invScriptObject == null) ? ""+sysDate.getYear() : invScriptObject.getInvoiceNbr() + "";
 	pushInvJSON.CustomerName = iCap.getSpecialText() + "";
 	pushInvJSON.InvoiceAmount = (invScriptObject == null) ? "0" : invScriptObject.getFee() + "";
+	pushInvJSON.MicarsInvoiceNumber = (mInvoiceNum == null) ? "" : mInvoiceNum + "";
 	requestBody = JSON.stringify(pushInvJSON);
 
 	var b64BodyContent = "";

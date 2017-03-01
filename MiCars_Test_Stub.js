@@ -91,6 +91,7 @@ function handleMiCars(feeSeq)
 	//Variables
 	var mInvoice = null;
 	var result = null;
+	var mInvoiceNumber = null;
 
 	//Get Invoice for feeSeq
 	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat());
@@ -125,11 +126,6 @@ function handleMiCars(feeSeq)
 			logDebug("SUCCESS! in calling MiCars createCustomer Web Service " + miCarsCont);
 		}
 	}
-	result = createMiCarsRef(feeSeq, inv[0]);
-	if (result)
-	{
-		logDebug("SUCCESS! in calling MiCars update reference Web Service " + result);
-	}
 	mInvoice = pushMiCarsInvoice(feeSeq);
 
 	//Update reference table with MiCars invoice number
@@ -139,12 +135,19 @@ function handleMiCars(feeSeq)
 
 
 		var mInvoiceObject = JSON.parse(mInvoice);
-		var mInvoiceNumber = mInvoiceObject.invoiceNumber;
+		mInvoiceNumber = mInvoiceObject.invoiceNumber;
 		var updateResult = updateMiCarsReference(feeSeq, capId.getCustomID(), invNum, mInvoiceNumber);
 		if  (updateResult)
 		{
 			logDebug("Successfully updated MiCars reference " + updateResult);
 		}
+	}
+
+	//Create MiCars Reference Data
+	result = createMiCarsRef(mInvoiceNumber, inv[0]);
+	if (result)
+	{
+		logDebug("SUCCESS! in calling MiCars create reference Web Service " + result);
 	}
 
 	//Update the feeitem UDF so we don't process it again
@@ -204,7 +207,7 @@ function updateMiCarsReference(feeSeq, altId, invNum, mInvoiceNumber)
 	}
 	else
 	{
-		logDebug("FAILED to call MiCars reference web service " + r.getErrorMessage())
+		logDebug("FAILED to call MiCars update reference web service " + r.getErrorMessage())
 		return false;
 	}
 }
@@ -307,7 +310,10 @@ function updateFeeItemUDF(feeSeq, udf1, udf2, udf3, udf4)//optional capId
 		return true;
 	}
 }
-function createMiCarsRef(feeSeq, invScriptObject)
+/*
+* NOTE: Pass null for parameter 'invScriptObject' to send the Renewal scenario to MiCars (Current Year for Invoice Number, $0 for Invoice Amount)
+*/
+function createMiCarsRef(mInvoiceNum, invScriptObject)
 {
 	if (arguments.length == 3)
 	{
@@ -324,7 +330,7 @@ function createMiCarsRef(feeSeq, invScriptObject)
 		}
 		var iCap = iCapResult.getOutput();
 	}
-	
+
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
 	{
@@ -334,7 +340,7 @@ function createMiCarsRef(feeSeq, invScriptObject)
 	//Start putting together request
 	var settingsSC = "MICARS_SETTINGS";
 	var key = lookup(settingsSC, "KEY");
-	var sharedSecret = lookup(settingsSC, "SECRET"); 
+	var sharedSecret = lookup(settingsSC, "SECRET");
 	var baseURL = lookup(settingsSC, "BASE_URL");
 	var uri = baseURL + "accela/reference"
 
@@ -347,10 +353,11 @@ function createMiCarsRef(feeSeq, invScriptObject)
 
 	//Create JSON request body
 	var pushInvJSON = new Object();
-	pushInvJSON.ReferenceId = itemCap.getCustomID() + "";
-	pushInvJSON.InvoiceNumber = invScriptObject.getInvoiceNbr() + "";
+	pushInvJSON.ReferenceId = (invScriptObject == null) ? itemCap.getCustomID() + "--R" : itemCap.getCustomID() + "";
+	pushInvJSON.InvoiceNumber = (invScriptObject == null) ? ""+sysDate.getYear() : invScriptObject.getInvoiceNbr() + "";
 	pushInvJSON.CustomerName = iCap.getSpecialText() + "";
-	pushInvJSON.InvoiceAmount = invScriptObject.getFee() + "";
+	pushInvJSON.InvoiceAmount = (invScriptObject == null) ? "0" : invScriptObject.getFee() + "";
+	pushInvJSON.MicarsInvoiceNumber = (mInvoiceNum == null) ? "" : mInvoiceNum + "";
 	requestBody = JSON.stringify(pushInvJSON);
 
 	var b64BodyContent = "";
