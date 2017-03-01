@@ -40,19 +40,26 @@ function handleMiCars(feeSeq)
 	}
 	mInvoice = pushMiCarsInvoice(feeSeq);
 
+<<<<<<< HEAD
 	var mInvoiceNumber = null
 	//Update reference table with MiCars invoice number
+=======
+	//Get MiCars Invoice Number
+>>>>>>> 6c454715ffb41b5ad3231add0fce9e0d8b9a34e3
 	if (mInvoice)
 	{
 		logDebug("SUCCESS! in calling MiCars create Invoice Web Service " + mInvoice);
 
 		var mInvoiceObject = JSON.parse(mInvoice);
 		mInvoiceNumber = mInvoiceObject.invoiceNumber;
+<<<<<<< HEAD
 		/*var updateResult = updateMiCarsReference(feeSeq, capId.getCustomID(), invNum, mInvoiceNumber);
 		if  (updateResult)
 		{
 			logDebug("Successfully updated MiCars reference " + updateResult);
 		}*/
+=======
+>>>>>>> 6c454715ffb41b5ad3231add0fce9e0d8b9a34e3
 	}
 
 	//Create MiCars Reference Data
