@@ -3,21 +3,16 @@
 */
 function createMiCarsRef(mInvoiceNum, invScriptObject)
 {
-	if (arguments.length == 3)
+	itemCap = (arguments.length > 2) ? arguments[2] : capId
+
+	var iCapResult = aa.cap.getCap(itemCap);
+	if(!iCapResult.getSuccess)
 	{
-		itemCap = arguments[2];
+		aa.print("Problem getting CAP for cap ".replace("cap", itemCap.getCusomtID()));
+		return false;
 	}
-	else
-	{
-		itemCap = capId;
-		var iCapResult = aa.cap.getCap(itemCap);
-		if(!iCapResult.getSuccess)
-		{
-			aa.print("Problem getting CAP for cap ".replace("cap", itemCap.getCusomtID()));
-			return false;
-		}
-		var iCap = iCapResult.getOutput();
-	}
+	var iCap = iCapResult.getOutput();
+	
 
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
