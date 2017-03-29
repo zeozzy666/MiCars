@@ -2,7 +2,7 @@
 eval(getScriptText("MICARS_FUNCTIONS", null, false));
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-capId = aa.cap.getCapID("NURGL-200586").getOutput();
+capId = aa.cap.getCapID("NURDL-200558").getOutput();
 cap = aa.cap.getCap(capId).getOutput();
 feeSeqList = new Array();
 paymentPeriodList = new Array();
@@ -29,21 +29,31 @@ contactArray = getContactArray();
 //printMethodsWithValues(r[0]);
 //handleMiCars(123);
 var FeeItemSeqNbrArray = new Array();
-FeeItemSeqNbrArray.push("18572851");
-FeeItemSeqNbrArray.push("18572852");
-FeeItemSeqNbrArray.push("18572873");
-FeeItemSeqNbrArray.push("18572875");
-r = voidMiCarsInvoice(null, null, "10086359");
-aa.print(r);
+FeeItemSeqNbrArray.push("18616619");
+FeeItemSeqNbrArray.push("18616620");
+//r = handleMiCars(FeeItemSeqNbrArray);
+//var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, FeeItemSeqNbrArray[0], aa.util.newQueryFormat()).getOutput();
+//var invNum = inv[0].getInvoiceNbr();
+//tAmount = aa.finance.getInvoiceAmountExceptVoidCredited(capId, invNum).getOutput();
+//aa.print(aa.finance.getInvoiceByCapID)
+//r = voidMiCarsInvoice(null, null, "10086359");
+//aa.print(tAmount);
 
 
-/*var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
+var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
 for (var x in fees)
 {
 	//r = pushMiCarsInvoice(fees[x].getF4FeeItem().getFeeSeqNbr());
-	handleMiCars(fees[x].getF4FeeItem().getFeeSeqNbr());
+	var a = new Array();
+	a.push(fees[x].getF4FeeItem().getFeeSeqNbr());
 }
-*/
+var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, a[0], aa.util.newQueryFormat()).getOutput();
+var invNum = inv[0].getInvoiceNbr();
+//handleMiCars(a);
+r = voidMiCarsInvoice(capId.getCustomID(), invNum, null);
+aa.print(r);
+
+
 function getCapAddresses()
 {
 	var itemCap = null;
@@ -251,24 +261,6 @@ function lookup(stdChoice,stdValue)
 		}
 	return strControl;
 	}
-
-
-
-function getScriptText(vScriptName, servProvCode, useProductScripts) {
-	if (!servProvCode)  servProvCode = aa.getServiceProviderCode();
-	vScriptName = vScriptName.toUpperCase();
-	var emseBiz = aa.proxyInvoker.newInstance("com.accela.aa.emse.emse.EMSEBusiness").getOutput();
-	try {
-		if (useProductScripts) {
-			var emseScript = emseBiz.getMasterScript(aa.getServiceProviderCode(), vScriptName);
-		} else {
-			var emseScript = emseBiz.getScriptByPK(aa.getServiceProviderCode(), vScriptName, "ADMIN");
-		}
-		return emseScript.getScriptText() + "";
-	} catch (err) {
-		return "";
-	}
-}
 
 
 
