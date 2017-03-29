@@ -63,7 +63,6 @@ function createMiCarsRef(mInvoiceNum, invScriptObject)
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
-		logDebug("SUCCESS! in calling MiCars reference Web Service");
 		return r.getOutput();
 	}
 	else

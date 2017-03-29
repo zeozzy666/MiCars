@@ -1,12 +1,12 @@
-function handleMiCars(feeSeq)
+function handleMiCars(feeSeqArray)
 {
 	//Variables
 	var mInvoice = null;
 	var result = null;
 	var mInvoiceNumber = null;
 
-	//Get Invoice for feeSeq
-	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat());
+	//Get Invoice
+	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeqArray[0], aa.util.newQueryFormat());
 	if (!inv.getSuccess())
 	{
 		logDebug("Problem getting invoice for cap $capid$".replace("$capid$", capId.getCustomID()));
@@ -38,7 +38,7 @@ function handleMiCars(feeSeq)
 			logDebug("SUCCESS! in calling MiCars createCustomer Web Service " + miCarsCont);
 		}
 	}
-	mInvoice = pushMiCarsInvoice(feeSeq);
+	mInvoice = pushMiCarsInvoice(feeSeqArray);
 
 	var mInvoiceNumber = null
 	//Update reference table with MiCars invoice number
@@ -60,8 +60,17 @@ function handleMiCars(feeSeq)
 	if (result)
 	{
 		logDebug("SUCCESS! in calling MiCars create reference Web Service " + result);
+		//Update the feeitem UDF so we don't process it again
+		for (f2 in feeSeqArray)
+		{
+			updateFeeItemUDF(feeSeqArray[f2], "MICARS", null, null, null);
+		}
 	}
+<<<<<<< HEAD:handleMiCars.js
+}
+=======
 
 	//Update the feeitem UDF so we don't process it again
 	updateFeeItemUDF(feeSeq, "MICARS", null, null, null);
 }
+>>>>>>> origin/master:Version 2.0/handleMiCars.js

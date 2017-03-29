@@ -1,36 +1,73 @@
-function pushMiCarsInvoice(feeSeq)
+function pushMiCarsInvoice(feeSeqArray)
 {
-	//Variables
-	var result = null;
-
-	//Get Fee information
-	var feeResult = aa.finance.getFeeItemByPK(capId, feeSeq);
-	if (!feeResult.getSuccess())
-	{
-		logDebug("Problem getting fees for capid ".replace("capid", capId.getCustomID()) + feeResult.getErrorMessage());
-		return false;
-	}
-
-	var fee = feeResult.getOutput();
-	var f4fee =	fee.getF4FeeItem();
-
-	var feesConfigSc = "MICARS_RECEIVABLES";
-	var feeConfig = lookup(feesConfigSc, f4fee.getFeeCod());
-	if (!feeConfig) return false;	
-
-	//Get Program, Division and SKU
-	var mDivision = feeConfig.split("/")[0];
-	var mProgram = feeConfig.split("/")[1];
-	var mSku = f4fee.getAccCodeL1();
-	mSku = parseInt(mSku, 10);
-
-	
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
 	{
 		eval(getScriptText("CRYPTOJS"));
 	}
 
+	//Variables
+	var result = null;
+	//Create JSON request body
+	var pushInvJSON = new Object();
+	pushInvJSON.Details = new Array();
+	var today = new Date();
+	var month = parseInt(today.getMonth()) + 1;
+	var requestBody = "";
+
+	//loop through each fee item
+	for (f in feeSeqArray)
+	{
+		//Get Fee information
+		var feeResult = aa.finance.getFeeItemByPK(capId, feeSeqArray[f]);
+		if (!feeResult.getSuccess())
+		{
+			logDebug("Problem getting fees for capid ".replace("capid", capId.getCustomID()) + feeResult.getErrorMessage());
+			continue;
+		}
+
+		var fee = feeResult.getOutput();
+		var f4fee =	fee.getF4FeeItem();
+
+		var feesConfigSc = "MICARS_RECEIVABLES";
+		var feeConfig = lookup(feesConfigSc, f4fee.getFeeCod());
+		if (!feeConfig) continue;	
+
+		//Get Program, Division and SKU
+		var mDivision = feeConfig.split("/")[0];
+		var mProgram = feeConfig.split("/")[1];
+		var mSku = f4fee.getAccCodeL1();
+		mSku = parseInt(mSku, 10);
+
+		pushInvJSON.AgencyCode = "791";
+		pushInvJSON.Division = mDivision + "";
+		pushInvJSON.Program = mProgram  + "";
+		pushInvJSON.InvoiceCode = "FEE";
+		pushInvJSON.FiscalYear = today.getFullYear() + "";
+		pushInvJSON.accountId = capId.getCustomID() + "";
+
+		pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
+		pushInvJSON.permitNumber = capId.getCustomID() + "";
+		pushInvJSON.InterfaceType = "ACCELA";
+		pushInvJSON.SKUNUMBER = mSku + "";
+		
+
+
+		//Details
+		var detatilsJSON = new Object();
+		detatilsJSON.Description = fee.getFeeDescription() + "";
+		detatilsJSON.Quantity = "1";
+		detatilsJSON.UnitCost = fee.getFee() + "";
+		detatilsJSON.TotalCost = fee.getFee() + "";
+		detatilsJSON.SalesTax = "false";
+
+		//push to JSON object
+		pushInvJSON.Details.push(detatilsJSON);
+	}
+
+	//Stringify
+	requestBody = JSON.stringify(pushInvJSON);
+	
 	//Start putting together request
 	var settingsSC = "MICARS_SETTINGS";
 	var key = lookup(settingsSC, "KEY");
@@ -42,40 +79,6 @@ function pushMiCarsInvoice(feeSeq)
 	var nonce = newGuid();
 	var method = "POST"
 	var encodedUri = encodeURIComponent(uri).toLowerCase();
-	var requestBody = "";
-	var today = new Date();
-	var month = parseInt(today.getMonth()) + 1;
-
-
-	//Create JSON request body
-	var pushInvJSON = new Object();
-	pushInvJSON.AgencyCode = "791";
-	pushInvJSON.Division = mDivision + "";
-	pushInvJSON.Program = mProgram  + "";
-	pushInvJSON.InvoiceCode = "FEE";
-	pushInvJSON.FiscalYear = today.getFullYear() + "";
-	pushInvJSON.accountId = capId.getCustomID() + "";
-
-	pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
-	pushInvJSON.permitNumber = capId.getCustomID() + "";
-	pushInvJSON.InterfaceType = "ACCELA";
-	pushInvJSON.SKUNUMBER = mSku + "";
-	pushInvJSON.Details = new Array();
-
-
-	//Details
-	var detatilsJSON = new Object();
-	detatilsJSON.Description = fee.getFeeDescription() + "";
-	detatilsJSON.Quantity = "1";
-	detatilsJSON.UnitCost = fee.getFee() + "";
-	detatilsJSON.TotalCost = fee.getFee() + "";
-	detatilsJSON.SalesTax = "false";
-
-	//push to JSON object
-	pushInvJSON.Details.push(detatilsJSON);
-
-	//Stringify
-	requestBody = JSON.stringify(pushInvJSON);
 
 	var b64BodyContent = "";
 	if(requestBody){

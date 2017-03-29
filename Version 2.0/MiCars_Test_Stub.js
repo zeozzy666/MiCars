@@ -1,11 +1,11 @@
-capId = aa.cap.getCapID("NURRL-200583").getOutput();
+capId = aa.cap.getCapID("NURGL-200586").getOutput();
 cap = aa.cap.getCap(capId).getOutput();
 feeSeqList = new Array();
 paymentPeriodList = new Array();
 publicUser = false;
 contactArray = getContactArray();
 //pushAutoAssessedFees2MiCars();
-feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
+//feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
 //inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat()).getOutput();
 //updateMiCarsReference(feeSeq, capId.getCustomID(), inv[0].getInvoiceNbr();, "123");
 //printMethods(inv[0]);
@@ -24,6 +24,13 @@ feeSeq = addFee("NUR_MILE","NURSERY INSPECTION FEES","FINAL",1,"Y", capId);
 //r = getCapAddresses()
 //printMethodsWithValues(r[0]);
 //handleMiCars(123);
+var FeeItemSeqNbrArray = new Array();
+FeeItemSeqNbrArray.push("18572851");
+FeeItemSeqNbrArray.push("18572852");
+FeeItemSeqNbrArray.push("18572873");
+FeeItemSeqNbrArray.push("18572875");
+handleMiCars(FeeItemSeqNbrArray);
+
 
 /*var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
 for (var x in fees)
@@ -33,68 +40,15 @@ for (var x in fees)
 }
 */
 /////////////////////////////////////////////////////////////////////MICARS FUNCTIONS////////////////////////////////////////////////////////////////
-function addFee(fcode, fsched, fperiod, fqty, finvoice) // Adds a single fee, optional argument: fCap
-{
-	// Updated Script will return feeSeq number or null if error encountered (SR5112)
-	var feeCap = capId;
-	var feeCapMessage = "";
-	var feeSeq_L = new Array(); // invoicing fee for CAP in args
-	var paymentPeriod_L = new Array(); // invoicing pay periods for CAP in args
-	var feeSeq = null;
-	if (arguments.length > 5) {
-		feeCap = arguments[5]; // use cap ID specified in args
-		feeCapMessage = " to specified CAP";
-	}
-
-	assessFeeResult = aa.finance.createFeeItem(feeCap, fsched, fcode, fperiod, fqty);
-	if (assessFeeResult.getSuccess()) {
-		feeSeq = assessFeeResult.getOutput();
-		logMessage("Successfully added Fee " + fcode + ", Qty " + fqty + feeCapMessage);
-		logDebug("The assessed fee Sequence Number " + feeSeq + feeCapMessage);
-
-		if (finvoice == "Y" && arguments.length == 5) // use current CAP
-		{
-			feeSeqList.push(feeSeq);
-			paymentPeriodList.push(fperiod);
-		}
-		if (finvoice == "Y" && arguments.length > 5) // use CAP in args
-		{
-			feeSeq_L.push(feeSeq);
-			paymentPeriod_L.push(fperiod);
-			var invoiceResult_L = aa.finance.createInvoice(feeCap, feeSeq_L, paymentPeriod_L);
-			if (invoiceResult_L.getSuccess())
-			{
-				logMessage("Invoicing assessed fee items" + feeCapMessage + " is successful.");
-			}
-			else
-			{
-				logDebug("**ERROR: Invoicing the fee items assessed" + feeCapMessage + " was not successful.  Reason: " + invoiceResult.getErrorMessage());
-			}
-		}
-		updateFeeItemInvoiceFlag(feeSeq, finvoice);
-		//Push invoice to MiCars
-		if (finvoice == "Y")
-		{
-			logDebug("Starting to push invoice to MiCars...");
-			handleMiCars(feeSeq);
-		}
-	} else {
-		logDebug("**ERROR: assessing fee (" + fcode + "): " + assessFeeResult.getErrorMessage());
-		feeSeq = null;
-	}
-
-	return feeSeq;
-
-}
-function handleMiCars(feeSeq)
+function handleMiCars(feeSeqArray)
 {
 	//Variables
 	var mInvoice = null;
 	var result = null;
 	var mInvoiceNumber = null;
 
-	//Get Invoice for feeSeq
-	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeq, aa.util.newQueryFormat());
+	//Get Invoice
+	var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeSeqArray[0], aa.util.newQueryFormat());
 	if (!inv.getSuccess())
 	{
 		logDebug("Problem getting invoice for cap $capid$".replace("$capid$", capId.getCustomID()));
@@ -126,7 +80,7 @@ function handleMiCars(feeSeq)
 			logDebug("SUCCESS! in calling MiCars createCustomer Web Service " + miCarsCont);
 		}
 	}
-	mInvoice = pushMiCarsInvoice(feeSeq);
+	mInvoice = pushMiCarsInvoice(feeSeqArray);
 
 	//Get MiCars Invoice Number
 	if (mInvoice)
@@ -142,10 +96,12 @@ function handleMiCars(feeSeq)
 	if (result)
 	{
 		logDebug("SUCCESS! in calling MiCars create reference Web Service " + result);
+		//Update the feeitem UDF so we don't process it again
+		for (f2 in feeSeqArray)
+		{
+			updateFeeItemUDF(feeSeqArray[f2], "MICARS", null, null, null);
+		}
 	}
-
-	//Update the feeitem UDF so we don't process it again
-	updateFeeItemUDF(feeSeq, "MICARS", null, null, null);
 }
 //This function can be expanded later to handle more updates over the MiCars Invoice number
 function updateMiCarsReference(feeSeq, altId, invNum, mInvoiceNumber)
@@ -383,39 +339,76 @@ function createMiCarsRef(mInvoiceNum, invScriptObject)
 		return false;
 	}
 }
-function pushMiCarsInvoice(feeSeq)
+function pushMiCarsInvoice(feeSeqArray)
 {
-	//Variables
-	var result = null;
-
-	//Get Fee information
-	var feeResult = aa.finance.getFeeItemByPK(capId, feeSeq);
-	if (!feeResult.getSuccess())
-	{
-		logDebug("Problem getting fees for capid ".replace("capid", capId.getCustomID()) + feeResult.getErrorMessage());
-		return false;
-	}
-
-	var fee = feeResult.getOutput();
-	var f4fee =	fee.getF4FeeItem();
-
-	var feesConfigSc = "MICARS_RECEIVABLES";
-	var feeConfig = lookup(feesConfigSc, f4fee.getFeeCod());
-	if (!feeConfig) return false;	
-
-	//Get Program, Division and SKU
-	var mDivision = feeConfig.split("/")[0];
-	var mProgram = feeConfig.split("/")[1];
-	var mSku = f4fee.getAccCodeL1();
-	mSku = parseInt(mSku, 10);
-
-	
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
 	{
 		eval(getScriptText("CRYPTOJS"));
 	}
 
+	//Variables
+	var result = null;
+	//Create JSON request body
+	var pushInvJSON = new Object();
+	pushInvJSON.Details = new Array();
+	var today = new Date();
+	var month = parseInt(today.getMonth()) + 1;
+	var requestBody = "";
+	
+	//loop through each fee item
+	for (f in feeSeqArray)
+	{
+		//Get Fee information
+		var feeResult = aa.finance.getFeeItemByPK(capId, feeSeqArray[f]);
+		if (!feeResult.getSuccess())
+		{
+			logDebug("Problem getting fees for capid ".replace("capid", capId.getCustomID()) + feeResult.getErrorMessage());
+			continue;
+		}
+
+		var fee = feeResult.getOutput();
+		var f4fee =	fee.getF4FeeItem();
+
+		var feesConfigSc = "MICARS_RECEIVABLES";
+		var feeConfig = lookup(feesConfigSc, f4fee.getFeeCod());
+		if (!feeConfig) continue;	
+
+		//Get Program, Division and SKU
+		var mDivision = feeConfig.split("/")[0];
+		var mProgram = feeConfig.split("/")[1];
+		var mSku = f4fee.getAccCodeL1();
+		mSku = parseInt(mSku, 10);
+
+		pushInvJSON.AgencyCode = "791";
+		pushInvJSON.Division = mDivision + "";
+		pushInvJSON.Program = mProgram  + "";
+		pushInvJSON.InvoiceCode = "FEE";
+		pushInvJSON.FiscalYear = today.getFullYear() + "";
+		pushInvJSON.accountId = capId.getCustomID() + "";
+
+		pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
+		pushInvJSON.permitNumber = capId.getCustomID() + "";
+		pushInvJSON.InterfaceType = "ACCELA";
+		pushInvJSON.SKUNUMBER = mSku + "";
+		
+
+
+		//Details
+		var detatilsJSON = new Object();
+		detatilsJSON.Description = fee.getFeeDescription() + "";
+		detatilsJSON.Quantity = "1";
+		detatilsJSON.UnitCost = fee.getFee() + "";
+		detatilsJSON.TotalCost = fee.getFee() + "";
+		detatilsJSON.SalesTax = "false";
+
+		//push to JSON object
+		pushInvJSON.Details.push(detatilsJSON);
+	}
+
+	//Stringify
+	requestBody = JSON.stringify(pushInvJSON);
+	
 	//Start putting together request
 	var settingsSC = "MICARS_SETTINGS";
 	var key = lookup(settingsSC, "KEY");
@@ -427,40 +420,6 @@ function pushMiCarsInvoice(feeSeq)
 	var nonce = newGuid();
 	var method = "POST"
 	var encodedUri = encodeURIComponent(uri).toLowerCase();
-	var requestBody = "";
-	var today = new Date();
-	var month = parseInt(today.getMonth()) + 1;
-
-
-	//Create JSON request body
-	var pushInvJSON = new Object();
-	pushInvJSON.AgencyCode = "791";
-	pushInvJSON.Division = mDivision + "";
-	pushInvJSON.Program = mProgram  + "";
-	pushInvJSON.InvoiceCode = "FEE";
-	pushInvJSON.FiscalYear = today.getFullYear() + "";
-	pushInvJSON.accountId = capId.getCustomID() + "";
-
-	pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
-	pushInvJSON.permitNumber = capId.getCustomID() + "";
-	pushInvJSON.InterfaceType = "ACCELA";
-	pushInvJSON.SKUNUMBER = mSku + "";
-	pushInvJSON.Details = new Array();
-
-
-	//Details
-	var detatilsJSON = new Object();
-	detatilsJSON.Description = fee.getFeeDescription() + "";
-	detatilsJSON.Quantity = "1";
-	detatilsJSON.UnitCost = fee.getFee() + "";
-	detatilsJSON.TotalCost = fee.getFee() + "";
-	detatilsJSON.SalesTax = "false";
-
-	//push to JSON object
-	pushInvJSON.Details.push(detatilsJSON);
-
-	//Stringify
-	requestBody = JSON.stringify(pushInvJSON);
 
 	var b64BodyContent = "";
 	if(requestBody){
@@ -477,7 +436,7 @@ function pushMiCarsInvoice(feeSeq)
 	restHeaders.put("Accept", "application/json");
 	restHeaders.put("Method", "POST");
 	restHeaders.put("Authorization", "amx " + auth);
-
+aa.print(requestBody);
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
 	{
@@ -1046,4 +1005,57 @@ function propertyValueFromName(object, methodName) {
     } else {
         return "";
     }
+}
+function addFee(fcode, fsched, fperiod, fqty, finvoice) // Adds a single fee, optional argument: fCap
+{
+	// Updated Script will return feeSeq number or null if error encountered (SR5112)
+	var feeCap = capId;
+	var feeCapMessage = "";
+	var feeSeq_L = new Array(); // invoicing fee for CAP in args
+	var paymentPeriod_L = new Array(); // invoicing pay periods for CAP in args
+	var feeSeq = null;
+	if (arguments.length > 5) {
+		feeCap = arguments[5]; // use cap ID specified in args
+		feeCapMessage = " to specified CAP";
+	}
+
+	assessFeeResult = aa.finance.createFeeItem(feeCap, fsched, fcode, fperiod, fqty);
+	if (assessFeeResult.getSuccess()) {
+		feeSeq = assessFeeResult.getOutput();
+		logMessage("Successfully added Fee " + fcode + ", Qty " + fqty + feeCapMessage);
+		logDebug("The assessed fee Sequence Number " + feeSeq + feeCapMessage);
+
+		if (finvoice == "Y" && arguments.length == 5) // use current CAP
+		{
+			feeSeqList.push(feeSeq);
+			paymentPeriodList.push(fperiod);
+		}
+		if (finvoice == "Y" && arguments.length > 5) // use CAP in args
+		{
+			feeSeq_L.push(feeSeq);
+			paymentPeriod_L.push(fperiod);
+			var invoiceResult_L = aa.finance.createInvoice(feeCap, feeSeq_L, paymentPeriod_L);
+			if (invoiceResult_L.getSuccess())
+			{
+				logMessage("Invoicing assessed fee items" + feeCapMessage + " is successful.");
+			}
+			else
+			{
+				logDebug("**ERROR: Invoicing the fee items assessed" + feeCapMessage + " was not successful.  Reason: " + invoiceResult.getErrorMessage());
+			}
+		}
+		updateFeeItemInvoiceFlag(feeSeq, finvoice);
+		//Push invoice to MiCars
+		if (finvoice == "Y")
+		{
+			logDebug("Starting to push invoice to MiCars...");
+			handleMiCars(feeSeq);
+		}
+	} else {
+		logDebug("**ERROR: assessing fee (" + fcode + "): " + assessFeeResult.getErrorMessage());
+		feeSeq = null;
+	}
+
+	return feeSeq;
+
 }

@@ -6,8 +6,11 @@
 | Date: 02/01/2017
 /------------------------------------------------------------------------------------------------------*/
 //Testing
-//aa.env.setValue("lookBackDays", 30);
+//aa.env.setValue("lookBackDays", 10);
 //
+
+//Include MiCars functions
+eval(getScriptText("MICARS_FUNCTIONS", null, false));
 
 //Get look back days
 var lookBackDays = aa.env.getValue("lookBackDays");
@@ -24,60 +27,78 @@ logDebug("Getting revenue from $fromdate$ to $todate$".replace("$fromdate$", res
 //Get revenue
 var json = getRevenue(restFromDate, restToDate);
 
-//aa.print(json)
-json = JSON.parse(json);
 if (json)
 {
+	logDebug("**MiCarsINFO** SUCCESS! in calling getRevenue Web Service with response " + json);
+	json = JSON.parse(json);
+}
 
-	for (var r in json.receipts)
+if (json)
+{
+	for (var r in json.Receipts)
 	{
-		for (var d in json.receipts[r].documents)
+		for (var d in json.Receipts[r].Documents)
 		{
-			var doc = json.receipts[r].documents[d];
-			if (!doc.interfaceId1) continue;
-
-			var tempArray = doc.interfaceId1.split("--");
+			//Variables
 			var altId = null;
 			var invcNum = null;
 			var capId = null;
+			var isRenewal = false;
 
-			if (tempArray.length > 0)
+			var doc = json.Receipts[r].Documents[d];
+			if (doc.InterfaceId1) 
 			{
-				altId = tempArray[0];
+				populateCapIDandInvoiceNumber(doc.InterfaceId1);
 			}
-			if (tempArray.length > 1)
+			else if (doc.InvoiceNumber)
 			{
-				invcNum = tempArray[1];
-			}
-			if (altId)
-			{
-				capId = aa.cap.getCapID(altId).getOutput();
-			}
-			
-			if (!capId)
-			{
-				logDebug("Received remmittance for $capid$ but record cannot be found in Accela".replace("$capid$", doc.interfaceId1));
-			}
-			else
-			{				
-				//prepare payment
-				//create paymentscriptmodel
-				if (altId)
+				//variables
+				var getRefResult = null;
+				var mInvoiceNumber = doc.InvoiceNumber;
+
+				//call MiCars web service
+				getRefResult = getMiCarsRefData(null, null, mInvoiceNumber);
+
+				if(getRefResult)
 				{
-					logDebug("Got remmittance for $capid$ now creating payment for $amount$".replace("$capid$", doc.interfaceId1).replace("$amount$", doc.documentAmount));
-					makePaymentProxy(capId, doc.documentAmount, "Check");
-					if (invcNum)
+					logDebug("**MiCarsINFO** SUCCESS! in calling getMiCarsRefData with result " + getRefResult);
+
+					var refId = getRefResult.referenceId;
+					if (refId)
 					{
-						applyPayments(invcNum);
-					}
-					else
-					{
-						applyPayments();
+						populateCapIDandInvoiceNumber(refId);
 					}
 				}
-				
 			}
+			//prepare payment
+			//create paymentscriptmodel
+			if (capId)
+			{
+				//variables
+				var payCap = capId;
 
+				//if this payment is for renewal, then we have to get the renewal child record
+				if (isRenewal)
+				{
+					payCap = getRenewalChild(capId);
+					if (!payCap)
+					{
+						logDebug("Could not find renewal cap for " + capId.getCustomID());
+						continue;
+					}
+				}
+
+				logDebug("Got remmittance for $capid$ now creating payment for $amount$".replace("$capid$", payCap.getCustomID()).replace("$amount$", doc.Amount));
+				makePaymentProxy(payCap, doc.Amount, "Check");
+				if (invcNum)
+				{
+					applyPayments(invcNum);
+				}
+				else
+				{
+					applyPayments();
+				}
+			}					
 		}
 	}	
 }
@@ -85,54 +106,69 @@ else
 {
 	logDebug("Did not retrieve revenue");
 }
-function getRevenue(fromDate, toDate)
+function getRenewalChild(itemCap)
 {
-	//Variables
-	var settingsSC = "MICARS_SETTINGS";
-	var key = lookup(settingsSC, "KEY");
-	var sharedSecret = lookup(settingsSC, "SECRET"); 
-	var baseURL = lookup(settingsSC, "BASE_URL");
-	var uri = baseURL + "revenue?controlNumber=&startingDateToMain=$fromdate$&endingDateToMain=$todate$&interfaced=false".replace("$fromdate$", fromDate).replace("$todate$", toDate);
+	//get renewal child records
+	var result = aa.cap.getProjectByMasterID(itemCap, "Renewal", null);
 
-	var time = epochTime();
-	var nonce = newGuid();
-	var method = "GET"
-	var encodedUri = encodeURIComponent(uri).toLowerCase();
-	var requestBody = "";
-
-	//Include CryptoJS for Authentication
-	if("undefined".equals(typeof(CryptoJS)))
+	if (result.getSuccess())
 	{
-		eval(getScriptText("CRYPTOJS"));
-	}
+		logDebug("Successfully retrieved count renewal child records for capid".replace("count", result.getOutput().length).replace("capid", itemCap.getCustomID()));
 
-	var b64BodyContent = "";
-	if(requestBody){
-	    // MD5 hash and convert the request body string to base 64
-	    b64BodyContent = CryptoJS.MD5(requestBody).toString(CryptoJS.enc.Base64);
-	}
+		var renewalCaps = result.getOutput();
 
-	var rawSignature = key + method + encodedUri + time + nonce + b64BodyContent;
+		//Loop through and find an in progress renewal
+		for  (var r in renewalCaps)
+		{
+			var thisCapId = renewalCaps[r].getCapID();
+			var thisCap = aa.cap.getCap(thisCapId).getOutput();
+			var status = thisCap.getCapStatus();
+			var thisCapDetail = aa.cap.getCapDetail(thisCapId).getOutput();
+			var balance = thisCapDetail.getBalance();
 
-	var signature = CryptoJS.HmacSHA256(rawSignature, sharedSecret).toString(CryptoJS.enc.Base64);
-	var auth = key + ":" + signature + ":" + nonce + ":" + time;
-	var restHeaders = aa.util.newHashMap();
-	restHeaders.put("Content-Type", "application/json");
-	restHeaders.put("Accept", "application/json");
-	restHeaders.put("Method", "GET");
-	restHeaders.put("Authorization", "amx " + auth);
+			if (balance > 0 && ("Renewal Submitted".equals(status) || "Review in Process".equals(status)))
+			{
+				return thisCapId;
+			}
 
-
-	var r = aa.httpClient.get(uri, restHeaders);
-	if (r.getSuccess())
-	{
-		logDebug("SUCCESS! in calling getRevenue Web Service");
-		return r.getOutput();
+		}
 	}
 	else
 	{
-		logDebug("FAILED to getRevenue from Web Service " + r.getErrorMessage())
+		logDebug("Problem retrieving renewal child caps " + result.getErrorMessage());
 		return false;
+	}
+
+	return false;
+}
+function populateCapIDandInvoiceNumber(miCarsReferenceID)
+{
+	var tempArray = miCarsReferenceID.split("--");
+
+	if (tempArray.length > 0)
+	{
+		altId = tempArray[0];
+	}
+	if (tempArray.length > 1)
+	{
+		if ("R".equals(tempArray[1]))
+		{
+			isRenewal = true;
+		}
+		else
+		{
+			invcNum = tempArray[1];
+		}
+		
+	}
+	if (altId)
+	{
+		capId = aa.cap.getCapID(altId).getOutput();
+	}
+	
+	if (!capId)
+	{
+		logDebug("Received remmittance for $capid$ but record cannot be found in Accela".replace("$capid$", doc.InterfaceId1));
 	}
 }
 
