@@ -349,7 +349,7 @@ function pushMiCarsInvoice(feeSeqArray)
 		pushInvJSON.InterfaceType = "ACCELA";
 		pushInvJSON.ShiptoAddress1 = (cAddress.getAddressLine1() != null) ? cAddress.getAddressLine1() + "" : "";
 		pushInvJSON.ShiptoCity = (cAddress.getCity() != null) ? cAddress.getCity() + "": "";
-		pushInvJSON.ShiptoZipCode (cAddress.getZip() != null) ? cAddress.getZip() + "": "";
+		pushInvJSON.ShiptoZipCode = (cAddress.getZip() != null) ? cAddress.getZip() + "": "";
 
 		//Details
 		var detatilsJSON = new Object();
