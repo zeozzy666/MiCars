@@ -30,13 +30,13 @@ function handleMiCars(feeSeqArray)
     logDebug("**MICARSINFO** SUCCESS! in calling getMiCarsCustomer, response for  " + capId.getCustomID() + " " +  contactJSON);
     contMiCars = JSON.parse(contactJSON);
   }
-  
-  if(!contMiCars || !contMiCars.AccountId || contMiCars.AccountId == 0)
-  {
     //get address
     var addresses = getCapAddresses();
     //Get Business Contact
-    var bizContact = getContactByType("Business", capId);
+    var bizContact = getContactByType("Business", capId);  
+
+  if(!contMiCars || !contMiCars.AccountId || contMiCars.AccountId == 0)
+  {
     //createa micars contact
     var miCarsCont = createMiCarsContact(bizContact, addresses[0], capId.getCustomID());
     if (miCarsCont)
@@ -44,7 +44,7 @@ function handleMiCars(feeSeqArray)
       logDebug("**MICARSINFO** SUCCESS! in calling createMiCarsContact, response for " + capId.getCustomID() + " " + miCarsCont);
     }
   }
-  mInvoice = pushMiCarsInvoice(feeSeqArray);
+  mInvoice = pushMiCarsInvoice(feeSeqArray, addresses[0]);
 
   //Get MiCars Invoice Number
   if (mInvoice)
@@ -293,14 +293,19 @@ function createMiCarsRef(mInvoiceNum, invScriptObject)
 }
 function pushMiCarsInvoice(feeSeqArray)
 {
+	//Variables
+	var result = null;
+	var cAddress = null;
 	//Include CryptoJS for Authentication
 	if("undefined".equals(typeof(CryptoJS)))
 	{
 		eval(getScriptText("CRYPTOJS"));
 	}
+	if (arguments.length > 1)
+	{
+		cAddress = arguments[1];
+	}
 
-	//Variables
-	var result = null;
 	//Create JSON request body
 	var pushInvJSON = new Object();
 	pushInvJSON.Details = new Array();
@@ -342,6 +347,9 @@ function pushMiCarsInvoice(feeSeqArray)
 		pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
 		pushInvJSON.permitNumber = capId.getCustomID() + "";
 		pushInvJSON.InterfaceType = "ACCELA";
+		pushInvJSON.ShiptoAddress1 = (cAddress.getAddressLine1() != null) cAddress.getAddressLine1() + "" : "";
+		pushInvJSON.ShiptoCity = (cAddress.getCity() != null) cAddress.getCity() + "": "":;
+		pushInvJSON.ShiptoZipCode (cAddress.getZip() != null) cAddress.getZip() + "": "":;
 
 		//Details
 		var detatilsJSON = new Object();
@@ -479,9 +487,9 @@ function createMiCarsContact(peopleModel, addressModel, accountId)
 	//Create JSON request body
 	var contact = new Object();
 	contact.Division = "PPPM";
-	contact.customername = peopleModel.getBusinessName() + ""; //Get name from Business Contact
-	contact.customFirstName = peopleModel.getFirstName() + "";
-	contact.customerMiddleName = peopleModel.getMiddleName() + "";
+	contact.customername = (peopleModel.getBusinessName()) != null ? peopleModel.getBusinessName() + "" : ""; //Get name from Business Contact
+	contact.customFirstName = (peopleModel.getFirstName()) != null ? peopleModel.getFirstName() + "" : "";
+	contact.customerMiddleName = (peopleModel.getMiddleName()) != null ? peopleModel.getMiddleName() + "" : "";
 	contact.idNum = accountId + "";
 	contact.programcode = "NURS";
 	contact.accountId = accountId + "";
