@@ -67,7 +67,7 @@ function handleMiCars(feeSeqArray)
     }
   }
 }
-function voidMiCarsInvoice(referenceId, accelaInv, micarsInvoiceNumber)
+function voidMiCarsInvoice(referenceId, accelaInv, micarsInvoiceNumber, comments)
 {
 	itemCap = capId;
 
@@ -128,7 +128,7 @@ function voidMiCarsInvoice(referenceId, accelaInv, micarsInvoiceNumber)
 	var writeOffObj = new Object();
 	writeOffObj.InvoiceNumber = miCarsInv;
 	writeOffObj.Reason = "A";
-	writeOffObj.Comments = "A";
+	writeOffObj.Comments = (comments) ? comments : "A";
 	requestBody = JSON.stringify(writeOffObj);
 
 	var b64BodyContent = "";
@@ -386,6 +386,7 @@ function pushMiCarsInvoice(feeSeqArray)
 	restHeaders.put("Accept", "application/json");
 	restHeaders.put("Method", "POST");
 	restHeaders.put("Authorization", "amx " + auth);
+        logDebug("**MICARSINFO** Calling createMiCarsInvoice with request boody: " + requestBody);
 
 	var r = aa.httpClient.post(uri, restHeaders, requestBody);
 	if (r.getSuccess())
@@ -624,13 +625,13 @@ function getMiCarsRefData(referenceId, accelaInv, micarsInvoiceNumber)
 	}
 	if (accelaInv)
 	{
-		uri += "InvoiceNumber=$accelaInv$&".replace("$accelaInv$", referenceId);
+		uri += "InvoiceNumber=$accelaInv$&".replace("$accelaInv$", accelaInv);
 	}
 	if (micarsInvoiceNumber)
 	{
 		uri += "MicarsInvoiceNumber=$micarsInvoiceNumber$".replace("$micarsInvoiceNumber$", micarsInvoiceNumber);
 	}
-
+logDebug("getMiCarsRefData URI is " + uri)
 	var time = epochTime();
 	var nonce = newGuid();
 	var method = "GET"
@@ -664,4 +665,15 @@ function getMiCarsRefData(referenceId, accelaInv, micarsInvoiceNumber)
 		logDebug("**MICARSINFO** FAILED to call MiCars getCustomer web service " + r.getErrorMessage())
 		return false;
 	}
+}
+function newGuid() 
+{
+    return "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0, v = c == "x" ? r : r & 0x3 | 0x8; return v.toString(16); });
+}
+function epochTime() 
+{
+    var d = new Date();
+    var t = d.getTime();
+    var o = t + "";
+    return o.substring(0, 10);
 }

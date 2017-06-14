@@ -1,30 +1,45 @@
+useAppSpecificGroupName = false;
+showDebug = 3;
+SCRIPT_VERSION = "3.0";
+//Include MiCars functions
+eval(getScriptText("INCLUDES_ACCELA_FUNCTIONS", null, false));
+eval(getScriptText("INCLUDES_ACCELA_GLOBALS", null, false));
+eval(getScriptText("INCLUDES_CUSTOM", null, false));
+
+capId = aa.cap.getCapID("FODR-016166").getOutput();
+
+//Get MiCars payments
 /*------------------------------------------------------------------------------------------------------/
-| Script Name	: MICARS_GET_REVENUE
-| Event   		: Batch
-| Description   : Gets payment from MiCars and applies payments to corresponding Accela Records
+| Script Name	: CTRCA:Licenses/-/-/Renewal
+| Event   		: Convert to real cap afteer
+| Description   : Gets payment from MiCars and applies payments to corresponding Accela renewal Records
 | Author: Fouad Ishac - fishac@accela.com
-| Date: 02/01/2017
+| Date: 03/31/2017
 /------------------------------------------------------------------------------------------------------*/
-//Testing
-//aa.env.setValue("lookBackDays", 1);
+//Variables
+var lookBackDays = 10;
 //
 
-//Include MiCars functions
-eval(getScriptText("MICARS_FUNCTIONS", null, false));
+
+//eval(getScriptText("MICARS_FUNCTIONS", null, false));
 
 //Get look back days
-var lookBackDays = aa.env.getValue("lookBackDays");
 var toDate = new Date();
 var fromDate = new Date();
 fromDate.setDate(toDate.getDate() - lookBackDays);
-aa.print(fromDate)
 var restFromDate = fromDate.getFullYear() + "-" + ('0' + (fromDate.getMonth()+1)).slice(-2) + "-" + ('0' + fromDate.getDate()).slice(-2);
 var restToDate = toDate.getFullYear() + "-" + ('0' + (toDate.getMonth()+1)).slice(-2) + "-" + ('0' + toDate.getDate()).slice(-2);
 var recDate = null;
 var controlNumber = null;
 var entryNumber = null;
-
-logDebug("Getting revenue from $fromdate$ to $todate$".replace("$fromdate$", restFromDate).replace("$todate$", restToDate));
+var date = getAppSpecific("MICARS_DATE");
+if (date)
+{
+	var manualDate = new Date(date);
+	restFromDate = manualDate.getFullYear() + "-" + ('0' + (manualDate.getMonth()+1)).slice(-2) + "-" + ('0' + manualDate.getDate()).slice(-2);
+	restToDate = manualDate.getFullYear() + "-" + ('0' + (manualDate.getMonth()+1)).slice(-2) + "-" + ('0' + manualDate.getDate()).slice(-2);	
+}
+aa.print("Getting revenue from $fromdate$ to $todate$".replace("$fromdate$", restFromDate).replace("$todate$", restToDate));
 
 
 //Get revenue
@@ -32,7 +47,7 @@ var json = getRevenue(restFromDate, restToDate);
 
 if (json)
 {
-	logDebug("**MiCarsINFO** SUCCESS! in calling getRevenue Web Service with response " + "json");
+	aa.print("**MiCarsINFO** SUCCESS! in calling getRevenue Web Service");
 	json = JSON.parse(json);
 }
 
@@ -40,8 +55,8 @@ if (json)
 {
 	for (var r in json.Receipts)
 	{
-		var recDate = json.Receipts[r].ReceiptDate;
-		controlNumber = json.Receipts[r].ControlNumber + "";
+		var recDate = json.Receipts[r].ReceiptDate + "";
+		var controlNumber = json.Receipts[r].ControlNumber + "";
 		var jsrecDate = null;
 		//Lets format the date
 		if (recDate)
@@ -55,7 +70,7 @@ if (json)
 			//Variables
 			var altId = null;
 			var invcNum = null;
-			var capId = null;
+			var thisCapId = null;
 			entryNumber = json.Receipts[r].Documents[d].EntryNumber;
 
 			var doc = json.Receipts[r].Documents[d];
@@ -74,11 +89,11 @@ if (json)
 
 				if(getRefResult)
 				{
-					logDebug("**MiCarsINFO** SUCCESS! in calling getMiCarsRefData with result " + "getRefResult");
+					aa.print("**MiCarsINFO** SUCCESS! in calling getMiCarsRefData with result " + "getRefResult");
 					var refData = JSON.parse(getRefResult);
 					if(!refData[0]) 
 					{
-						logDebug("**MICARSINFO** getMiCarsRefData did not return any results now skipping");
+						aa.print("**MICARSINFO** getMiCarsRefData did not return any results now skipping");
 						continue;
 					}
 					var refId = refData[0].ReferenceId;
@@ -90,15 +105,30 @@ if (json)
 			}
 			//prepare payment
 			//create paymentscriptmodel
-			if (capId)
+			if (thisCapId)
 			{
 				//variables
-				var payCap = capId;
-				logDebug("Checking to see if payment exists on this cap");
+				payCap = getRenewalChild(thisCapId);
+				if (!payCap)
+				{
+					aa.print("Could not find renewal cap for " + thisCapId.getCustomID());
+					continue;
+				}
+				//have to get capId again because getRenewalChild() does not return a complete capId
+				payCap = aa.cap.getCapID(payCap.getID1(), payCap.getID2(), payCap.getID3()).getOutput();
+
+				//if current record is not equal to the record we are processing then this is not the right payment
+				if (payCap.getCustomID() != capId.getCustomID())
+				{
+					aa.print("Skipping applying payment to $paycap$ because it's not equal $capid$".replace("$paycap$", payCap.getCustomID()).replace("$capid$", capId.getCustomID()));
+					continue;
+				}
+
+				aa.print("Checking to see if payment exists on this cap");
 				var paymentsSR = aa.finance.getPaymentByCapID(payCap, aa.util.newQueryFormat());
 				if (!paymentsSR.getSuccess())
 				{
-					logDebug("Problem getting payments for capid ".replace("capid", payCap.getCustomID()) + paymentsSR.getErrorMessage());
+					aa.print("Problem getting payments for capid ".replace("capid", payCap.getCustomID()) + paymentsSR.getErrorMessage());
 				}
 				else
 				{
@@ -117,21 +147,21 @@ if (json)
 					}
 					if (found)
 					{
-						logDebug("Payment already applied to capid with MiCars control number cnumber and entry number enumber, skipping".replace("capid", payCap.getCustomID()).replace("cnumber", controlNumber).replace("enumber", entryNumber));
+						aa.print("Payment already applied to capid with MiCars control number cnumber, skipping".replace("capid", payCap.getCustomID()).replace("cnumber", controlNumber));
 						continue;
 					}
-					logDebug("Got remmittance for $capid$ now creating payment for $amount$".replace("$capid$", payCap.getCustomID()).replace("$amount$", doc.Amount));
+					aa.print("Got remmittance for $capid$ now creating payment for $amount$".replace("$capid$", payCap.getCustomID()).replace("$amount$", doc.Amount));
 					var pID = makePaymentProxy(payCap, doc.Amount, "ASC").getOutput();
 
 					//Update UDF
-					var updateResult = aa.cashier.editPaymentUDFAndReceivedType(payCap, parseInt(pID), controlNumber + "-" + entryNumber, "", "", "", "");
+					var updateResult = aa.cashier.editPaymentUDFAndReceivedType(payCap, parseInt(pID), controlNumber, "", "", "", "");
 					if (updateResult.getSuccess())
 					{
-						logDebug("Successfully update UDF1 for payment with MiCars Control number cnum".replace("cnum", controlNumber));
+						aa.print("Successfully update UDF1 for payment with MiCars Control number cnum".replace("cnum", controlNumber));
 					}
 					else
 					{
-						logDebug("Problem updating payment UDF " + updateResult.getErrorMessage());
+						aa.print("Problem updating payment UDF " + updateResult.getErrorMessage());
 					}
 					if (invcNum)
 					{
@@ -142,54 +172,68 @@ if (json)
 						applyPayments();
 					}					
 				}
-
-			}					
+			}
+			else
+			{
+				continue;
+			}				
 		}
 	}	
 }
 else
 {
-	logDebug("Did not retrieve revenue");
+	aa.print("Did not retrieve revenue");
+}
+function getRenewalChild(itemCap)
+{
+	//get renewal child records
+	var result = aa.cap.getProjectByMasterID(itemCap, "Renewal", null);
+
+	if (result.getSuccess())
+	{
+		aa.print("Successfully retrieved count renewal child records for capid".replace("count", result.getOutput().length).replace("capid", itemCap.getCustomID()));
+
+		var renewalCaps = result.getOutput();
+
+		//Loop through and find an in progress renewal
+		for  (var r in renewalCaps)
+		{
+			var renewCapId = renewalCaps[r].getCapID();
+			var thisCap = aa.cap.getCap(renewCapId).getOutput();
+			var status = thisCap.getCapStatus();
+			var thisCapDetail = aa.cap.getCapDetail(renewCapId).getOutput();
+			var balance = thisCapDetail.getBalance();
+
+			if (balance > 0 && (!"Issued".equals(status)))
+			{
+				return renewCapId;
+			}
+
+		}
+	}
+	else
+	{
+		aa.print("Problem retrieving renewal child caps " + result.getErrorMessage());
+		return false;
+	}
+
+	return false;
 }
 function populateCapIDandInvoiceNumber(miCarsReferenceID)
 {
-	var tempArray = miCarsReferenceID.split("--");
-	
-	if (tempArray.length > 1)
+	var renewalFlagArray = miCarsReferenceID.split("/R");
+	if (renewalFlagArray.length > 1)
 	{
-		altId = tempArray[0];
-		invcNum = tempArray[1];
+		isRenewal = true;
+		altId = renewalFlagArray[0];
 	}
-	else if (tempArray.length == 1)
-	{
-		altId = tempArray[0];
-	}
-
 	if (altId)
 	{
-		capId = aa.cap.getCapID(altId).getOutput();
+		thisCapId = aa.cap.getCapID(altId).getOutput();
 	}
-	
-	if (!capId)
+	if (!thisCapId)
 	{
-		logDebug("Received remmittance for $capid$ but record cannot be found in Accela".replace("$capid$", doc.InterfaceId1));
-	}
-}
-
-function getScriptText(vScriptName, servProvCode, useProductScripts) 
-{
-	if (!servProvCode)  servProvCode = aa.getServiceProviderCode();
-	vScriptName = vScriptName.toUpperCase();
-	var emseBiz = aa.proxyInvoker.newInstance("com.accela.aa.emse.emse.EMSEBusiness").getOutput();
-	try {
-		if (useProductScripts) {
-			var emseScript = emseBiz.getMasterScript(aa.getServiceProviderCode(), vScriptName);
-		} else {
-			var emseScript = emseBiz.getScriptByPK(aa.getServiceProviderCode(), vScriptName, "ADMIN");
-		}
-		return emseScript.getScriptText() + "";
-	} catch (err) {
-		return "";
+		aa.print("Received remmittance for $capid$ but record cannot be found in Accela".replace("$capid$", doc.InterfaceId1));
 	}
 }
 function makePaymentProxy(itemCap, feeAmount, payMethod)
@@ -231,66 +275,19 @@ function makePaymentProxy(itemCap, feeAmount, payMethod)
 	paymentModel.setAuditID("ADMIN"); 
 	paymentModel.setPaymentStatus("Paid"); 
 	paymentModel.setReceivedType(payModel.getReceivedType()); 
-
 	try
 	{ 
 		var payNum = cashierBiz.makePayment(paymentModel); 
-		logDebug("Made payment: "+payNum); 
+		aa.print("Made payment: "+payNum); 
 		result = new com.accela.aa.emse.dom.ScriptResult(true, "Payment Exception", "", payNum); 
 	} 
 	catch(err)
 	{ 
-		logDebug("Failed to make payment: " + err); 
+		aa.print("Failed to make payment: " + err); 
 		result = new com.accela.aa.emse.dom.ScriptResult(false, "Payment Exception", err, ""); 
 	} 
 	return result; 
 } 
-
-
-function lookup(stdChoice,stdValue) 
-{
-	var strControl;
-	var bizDomScriptResult = aa.bizDomain.getBizDomainByValue(stdChoice,stdValue);
-
-	if (bizDomScriptResult.getSuccess())
-	{
-		var bizDomScriptObj = bizDomScriptResult.getOutput();
-		strControl = "" + bizDomScriptObj.getDescription(); // had to do this or it bombs.  who knows why?
-		logDebug("lookup(" + stdChoice + "," + stdValue + ") = " + strControl);
-	}
-	else
-	{
-		logDebug("lookup(" + stdChoice + "," + stdValue + ") does not exist");
-	}
-	return strControl;
-}
-
-
-function logDebug(str)
-{
-	aa.print(str);
-}
-
-function printJSON(object)
-{
-for(var key in object) {
-    var value = object[key];
-    aa.print("$key$: $value$".replace("$key$", key).replace("$value$", value));
-}
-}
-
-function newGuid() 
-{
-    return "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx".replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0, v = c == "x" ? r : r & 0x3 | 0x8; return v.toString(16); });
-}
-function epochTime() 
-{
-    var d = new Date();
-    var t = d.getTime();
-    var o = t + "";
-    return o.substring(0, 10);
-}
-
 
 
 function applyPayments() {
@@ -303,7 +300,7 @@ function applyPayments() {
 	var payResult = aa.finance.getPaymentByCapID(capId, null)
 
 		if (!payResult.getSuccess()) {
-			logDebug("**ERROR: error retrieving payments " + payResult.getErrorMessage());
+			aa.print("**ERROR: error retrieving payments " + payResult.getErrorMessage());
 			return false
 		}
 
@@ -324,7 +321,7 @@ function applyPayments() {
 		var feeResult = aa.finance.getFeeItemByCapID(capId);
 
 		if (!feeResult.getSuccess()) {
-			logDebug("**ERROR: error retrieving fee items " + feeResult.getErrorMessage());
+			aa.print("**ERROR: error retrieving fee items " + feeResult.getErrorMessage());
 			return false
 		}
 
@@ -340,7 +337,7 @@ function applyPayments() {
 				continue; // only apply to invoiced fees
 
 			if (!pfResult.getSuccess()) {
-				logDebug("**ERROR: error retrieving fee payment items items " + pfResult.getErrorMessage());
+				aa.print("**ERROR: error retrieving fee payment items items " + pfResult.getErrorMessage());
 				return false
 			}
 
@@ -362,7 +359,7 @@ function applyPayments() {
 			var invoiceResult = aa.finance.getFeeItemInvoiceByFeeNbr(capId, feeItem.getFeeSeqNbr(), null);
 
 			if (!invoiceResult.getSuccess()) {
-				logDebug("**ERROR: error retrieving invoice items " + invoiceResult.getErrorMessage());
+				aa.print("**ERROR: error retrieving invoice items " + invoiceResult.getErrorMessage());
 				return false
 			}
 
@@ -371,7 +368,7 @@ function applyPayments() {
 			// Should return only one invoice number per fee item
 
 			if (invoiceItem.length != 1) {
-				logDebug("**WARNING: fee item " + feeItem.getFeeSeqNbr() + " returned " + invoiceItem.length + " invoice matches")
+				aa.print("**WARNING: fee item " + feeItem.getFeeSeqNbr() + " returned " + invoiceItem.length + " invoice matches")
 			} else {
 				if (invcNum && invoiceItem[0].getInvoiceNbr() != invcNum) continue;
 
@@ -387,9 +384,9 @@ function applyPayments() {
 
 				if (applyResult.getSuccess()) {
 					payBalance = payBalance - fpaylist[0];
-					logDebug("Applied $" + fpaylist[0] + " to fee code " + feeItem.getFeeCod() + ".  Payment Balance: $" + payBalance);
+					aa.print("Applied $" + fpaylist[0] + " to fee code " + feeItem.getFeeCod() + ".  Payment Balance: $" + payBalance);
 				} else {
-					logDebug("**ERROR: error applying payment " + applyResult.getErrorMessage());
+					aa.print("**ERROR: error applying payment " + applyResult.getErrorMessage());
 					return false
 				}
 			}
@@ -398,4 +395,56 @@ function applyPayments() {
 				break;
 		}
 	}
+}
+
+function getScriptText(vScriptName, servProvCode, useProductScripts) 
+{
+	if (!servProvCode)  servProvCode = aa.getServiceProviderCode();
+	vScriptName = vScriptName.toUpperCase();
+	var emseBiz = aa.proxyInvoker.newInstance("com.accela.aa.emse.emse.EMSEBusiness").getOutput();
+	try {
+		if (useProductScripts) {
+			var emseScript = emseBiz.getMasterScript(aa.getServiceProviderCode(), vScriptName);
+		} else {
+			var emseScript = emseBiz.getScriptByPK(aa.getServiceProviderCode(), vScriptName, "ADMIN");
+		}
+		return emseScript.getScriptText() + "";
+	} catch (err) {
+		return "";
+	}
+}
+function getAppSpecific(itemName)  // optional: itemCap
+{
+	var updated = false;
+	var i=0;
+	var itemCap = capId;
+	if (arguments.length == 2) itemCap = arguments[1]; // use cap ID specified in args
+   	
+	if (useAppSpecificGroupName)
+	{
+		if (itemName.indexOf(".") < 0)
+			{ aa.print("**WARNING: editAppSpecific requires group name prefix when useAppSpecificGroupName is true") ; return false }
+		
+		
+		var itemGroup = itemName.substr(0,itemName.indexOf("."));
+		var itemName = itemName.substr(itemName.indexOf(".")+1);
+	}
+	
+    var appSpecInfoResult = aa.appSpecificInfo.getByCapID(itemCap);
+	if (appSpecInfoResult.getSuccess())
+ 	{
+		var appspecObj = appSpecInfoResult.getOutput();
+		
+		if (itemName != "")
+		{
+			for (i in appspecObj)
+				if( appspecObj[i].getCheckboxDesc() == itemName && (!useAppSpecificGroupName || appspecObj[i].getCheckboxType() == itemGroup) )
+				{
+					return appspecObj[i].getChecklistComment();
+					break;
+				}
+		} // item name blank
+	} 
+	else
+		{ aa.print( "**ERROR: getting app specific info for Cap : " + appSpecInfoResult.getErrorMessage()) }
 }
