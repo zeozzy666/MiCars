@@ -347,9 +347,9 @@ function pushMiCarsInvoice(feeSeqArray)
 		pushInvJSON.InvoiceDate = today.getFullYear() + "-" + month + "-" + today.getDate();
 		pushInvJSON.permitNumber = capId.getCustomID() + "";
 		pushInvJSON.InterfaceType = "ACCELA";
-		pushInvJSON.ShiptoAddress1 = (cAddress.getAddressLine1() != null) cAddress.getAddressLine1() + "" : "";
-		pushInvJSON.ShiptoCity = (cAddress.getCity() != null) cAddress.getCity() + "": "":;
-		pushInvJSON.ShiptoZipCode (cAddress.getZip() != null) cAddress.getZip() + "": "":;
+		pushInvJSON.ShiptoAddress1 = (cAddress.getAddressLine1() != null) ? cAddress.getAddressLine1() + "" : "";
+		pushInvJSON.ShiptoCity = (cAddress.getCity() != null) ? cAddress.getCity() + "": "";
+		pushInvJSON.ShiptoZipCode (cAddress.getZip() != null) ? cAddress.getZip() + "": "";
 
 		//Details
 		var detatilsJSON = new Object();
