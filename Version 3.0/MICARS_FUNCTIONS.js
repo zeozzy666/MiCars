@@ -128,7 +128,7 @@ function voidMiCarsInvoice(referenceId, accelaInv, micarsInvoiceNumber, comments
 	var writeOffObj = new Object();
 	writeOffObj.InvoiceNumber = miCarsInv;
 	writeOffObj.Reason = "A";
-	writeOffObj.Comments = (comments) ? comments : "A";
+	writeOffObj.Comments = (comments != null) ? comments : "A";
 	requestBody = JSON.stringify(writeOffObj);
 
 	var b64BodyContent = "";
