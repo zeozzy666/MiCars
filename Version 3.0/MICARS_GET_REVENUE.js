@@ -82,6 +82,7 @@ if (json)
 						continue;
 					}
 					var refId = refData[0].ReferenceId;
+					invcNum = refData[0].InvoiceNumber;
 					if (refId)
 					{
 						populateCapIDandInvoiceNumber(refId);
