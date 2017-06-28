@@ -40,7 +40,7 @@ FeeItemSeqNbrArray.push("18616620");
 //aa.print(tAmount);
 
 
-var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
+/*var fees = aa.finance.getFeeItemByCapID(capId).getOutput();
 for (var x in fees)
 {
 	//r = pushMiCarsInvoice(fees[x].getF4FeeItem().getFeeSeqNbr());
@@ -51,6 +51,8 @@ var inv = aa.finance.getFeeItemInvoiceByFeeNbr(capId, a[0], aa.util.newQueryForm
 var invNum = inv[0].getInvoiceNbr();
 //handleMiCars(a);
 r = voidMiCarsInvoice(capId.getCustomID(), invNum, null);
+*/
+r = getMiCarsRefData(null, null, 10184920)
 aa.print(r);
 
 
